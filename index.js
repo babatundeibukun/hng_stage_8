@@ -110,13 +110,17 @@ app.post('/payment/initialize', async (req, res) => {
     }
 
     // Validate amount (must be positive integer in kobo/cents)
-    const amountInKobo = Math.round(parseFloat(amount) * 100);
-    if (amountInKobo <= 0 || isNaN(amountInKobo)) {
+    const parsedAmount = parseFloat(amount);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
       return res.status(400).json({
         status: 'error',
         message: 'Amount must be a positive number'
       });
     }
+    
+    // Convert to kobo/cents with proper precision handling
+    // Using toFixed to ensure exactly 2 decimal places before converting to integer
+    const amountInKobo = parseInt((parsedAmount * 100).toFixed(0), 10);
 
     // Initialize payment with Paystack
     const response = await axios.post(
