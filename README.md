@@ -162,7 +162,8 @@ POST /payments/paystack/initiate
 Content-Type: application/json
 
 {
-  "amount": 5000
+  "amount": 5000,
+  "email": your email
 }
 ```
 Initializes a Paystack transaction. Amount is in kobo (smallest currency unit).
