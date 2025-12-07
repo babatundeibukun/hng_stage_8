@@ -10,13 +10,14 @@ from app.database import get_db
 from app.models import User
 from app.schemas import GoogleAuthURLResponse, GoogleCallbackResponse
 from app.config import settings
+from app.auth_utils import create_access_token
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 # Google OAuth URLs
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
-GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v1/userinfo"
+GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
 
 
 @router.get("/google", response_model=GoogleAuthURLResponse)
@@ -137,10 +138,17 @@ async def google_callback(code: str = None, db: AsyncSession = Depends(get_db)):
             await db.commit()
             await db.refresh(user)
             
+            # Create JWT token for the user
+            access_token = create_access_token(
+                data={"sub": user.id, "email": user.email}
+            )
+            
             return GoogleCallbackResponse(
                 user_id=user.id,
                 email=user.email,
-                name=user.name
+                name=user.name,
+                access_token=access_token,
+                token_type="bearer"
             )
     
     except HTTPException:

@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Optional
 
 from app.database import get_db
-from app.models import Transaction, TransactionStatus
+from app.models import Transaction, TransactionStatus, User
 from app.schemas import (
     PaymentInitiateRequest,
     PaymentInitiateResponse,
@@ -16,6 +16,7 @@ from app.schemas import (
     WebhookResponse
 )
 from app.config import settings
+from app.auth_utils import get_current_user
 
 router = APIRouter(prefix="/payments", tags=["Payments"])
 
@@ -27,10 +28,12 @@ PAYSTACK_VERIFY_URL = "https://api.paystack.co/transaction/verify"
 @router.post("/paystack/initiate", response_model=PaymentInitiateResponse, status_code=status.HTTP_201_CREATED)
 async def initiate_payment(
     payment_request: PaymentInitiateRequest,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
     Initiate a Paystack payment transaction.
+    Requires authentication. Email is taken from authenticated user.
     Returns the payment reference and authorization URL.
     """
     try:
@@ -65,7 +68,7 @@ async def initiate_payment(
                 },
                 json={
                     "amount": payment_request.amount,
-                    "email": payment_request.email,
+                    "email": current_user.email,  # Get email from authenticated user
                     "reference": reference,
                     "currency": "NGN"
                 }
@@ -90,6 +93,7 @@ async def initiate_payment(
             # Persist transaction in database
             transaction = Transaction(
                 reference=reference,
+                user_id=current_user.id,  # Link transaction to authenticated user
                 amount=payment_request.amount,
                 status=TransactionStatus.PENDING,
                 authorization_url=authorization_url
